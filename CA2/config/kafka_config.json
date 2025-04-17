@@ -1,0 +1,7 @@
+{
+    "bootstrap_servers": "localhost:9092",
+    "transaction_topic": "darooghe.transactions",
+    "error_topic": "darooghe.error_logs",
+    "fraud_topic": "darooghe.fraud_alerts",
+    "consumer_group": "darooghe_consumer_group"
+  }
