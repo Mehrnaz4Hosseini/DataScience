@@ -1,6 +1,6 @@
 from pyspark.sql import DataFrame
 import logging
-from src.batch_processing.utils.config import MONGO_URI, MONGO_DB
+from configs import MONGO_URI, MONGO_DB
 
 logger = logging.getLogger(__name__)
 
