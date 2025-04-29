@@ -1,36 +1,40 @@
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
-from utils import config
+from configs import KAFKA_BOOTSTRAP_SERVERS, SPARK_MASTER
 from src.batch_processing.utils.mongo_utils import save_to_mongo
 
 def run_commission_analysis():
     spark = SparkSession.builder \
         .appName("CommissionAnalysis") \
-        .master(config.SPARK_MASTER) \
-        .config("spark.mongodb.input.uri", f"{config.MONGO_URI}/{config.MONGO_DB}.{config.TRANSACTIONS_COLLECTION}") \
-        .config("spark.mongodb.output.uri", f"{config.MONGO_URI}/{config.MONGO_DB}") \
-        .config("spark.jars.packages", "org.mongodb.spark:mongo-spark-connector_2.12:3.0.1") \
+        .master(SPARK_MASTER) \
+        .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0") \
         .getOrCreate()
 
-    try:
-        # Load data from MongoDB with proper options
-        df = spark.read \
-            .format("mongo") \
-            .option("uri", config.MONGO_URI) \
-            .option("database", config.MONGO_DB) \
-            .option("collection", config.TRANSACTIONS_COLLECTION) \
-            .load()
-            
-            
-        if df.count() == 0:
-            print("Warning: No data loaded from MongoDB!")
-            spark.stop()
-            return
-            
-    except Exception as e:
-        print(f"Error loading data from MongoDB: {str(e)}")
-        spark.stop()
-        return
+    # Read from Kafka topic with valid transactions
+    df = spark.read \
+        .format("kafka") \
+        .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
+        .option("subscribe", "darooghe.valid_transactions") \
+        .option("startingOffsets", "earliest") \
+        .load() \
+        .selectExpr("CAST(value AS STRING)") \
+        .select(F.from_json("value", 
+            "transaction_id STRING, "
+            "timestamp TIMESTAMP, "
+            "customer_id STRING, "
+            "merchant_id STRING, "
+            "merchant_category STRING, "
+            "payment_method STRING, "
+            "amount DOUBLE, "
+            "status STRING, "
+            "commission_type STRING, "
+            "commission_amount DOUBLE, "
+            "vat_amount DOUBLE, "
+            "total_amount DOUBLE, "
+            "customer_type STRING, "
+            "risk_level INT"
+        ).alias("data")) \
+        .select("data.*")
 
     # I. Commission Efficiency
     efficiency_report = df.groupBy("merchant_category").agg(
@@ -61,4 +65,3 @@ def run_commission_analysis():
 
 if __name__ == "__main__":
     run_commission_analysis()
-

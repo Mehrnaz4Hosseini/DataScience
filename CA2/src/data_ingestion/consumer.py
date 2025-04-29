@@ -1,5 +1,5 @@
 from confluent_kafka import Consumer, Producer
-from src.data_ingestion.schemas import Transaction
+from pymongo import MongoClient
 from src.data_ingestion.validator import parse_transaction, validate_business_rules, transaction_to_serializable
 import json
 
@@ -13,7 +13,7 @@ class TransactionConsumer:
         }
         self.consumer = Consumer(self.conf)
         self.producer = Producer({'bootstrap.servers': 'localhost:9092'})
-
+        
     def process_message(self, msg):
         """Process a Kafka message with full schema validation."""
         transaction = parse_transaction(msg.value())
@@ -22,9 +22,6 @@ class TransactionConsumer:
 
         errors = validate_business_rules(transaction)
         if errors:
-            # # Convert datetime to ISO format for display
-            # display_data = transaction.__dict__.copy()
-            # display_data["timestamp"] = display_data["timestamp"].isoformat()
             self.producer.produce(
                 'darooghe.error_logs',
                 value=json.dumps({
@@ -35,7 +32,11 @@ class TransactionConsumer:
             )
             print(f"❌ Invalid: {transaction.transaction_id} ({errors})")
         else:
-            print(f"✅ Valid: {transaction.transaction_id}")
+            self.producer.produce(
+                'darooghe.valid_transactions',
+                value=json.dumps(transaction_to_serializable(transaction))
+            )
+            print(f"✅ Valid: {transaction.transaction_id} - Stored in valid_transactions topic")
 
     def start_consuming(self):
         self.consumer.subscribe(['darooghe.transactions'])
@@ -46,9 +47,6 @@ class TransactionConsumer:
                 transaction = parse_transaction(msg.value())
                 if transaction:
                     print("\n=== SAMPLE MESSAGE ===")
-                    # # Convert datetime to ISO format for display
-                    # display_data = transaction.__dict__.copy()
-                    # display_data["timestamp"] = display_data["timestamp"].isoformat()
                     print(json.dumps(transaction_to_serializable(transaction), indent=2))
                     print("=====================\n")
                     self.process_message(msg)
