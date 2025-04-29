@@ -48,6 +48,23 @@ with no serious errors.
   --partitions 1 \
   --replication-factor 1
   ```
+```bash
+
+```bash
+/opt/homebrew/bin/kafka-topics --create \
+  --topic darooghe.valid_transactions \
+  --bootstrap-server localhost:9092 \
+  --partitions 1 \
+  --replication-factor 1
+```
+
+```bash
+kafka-topics --create \
+  --topic darooghe.realtime_metrics \
+  --bootstrap-server localhost:9092 \
+  --partitions 3 \
+  --replication-factor 1
+  ```
 
 #### 6. Test the connection:
 ```bash
@@ -56,6 +73,10 @@ nc -zv localhost 9092
 Should return "succeeded" message.
 
 
+#### 6. See topics:
+```bash
+/opt/homebrew/bin/kafka-topics --bootstrap-server localhost:9092 --list
+```
 
 Here's how to **completely stop Kafka and reset all data** to start fresh:
 
@@ -113,48 +134,63 @@ pkill -f mongod
 rm -f ~/data/db/mongod.lock
 
 # Start MongoDB (keep terminal open)
+brew services start mongodb-community
 mongod --dbpath ~/data/db --logpath ~/data/db/mongod.log --logappend
 ```
 
-#### 2. Initialize Collections:
+
+#### 2. Create your topic (in a new terminal): -> I did it wrong, not this step, every ou
+
 ```bash
-mongosh
-use darooghe
-db.createCollection("transactions")
-exit
+/opt/homebrew/bin/kafka-topics --create \
+  --topic darooghe.spending_trends \
+  --bootstrap-server localhost:9092 \
+  --partitions 1 \
+  --replication-factor 1
 ```
 
-#### 3. Run Commission Analysis:
+do it for the `commission_efficiency, commission_profitability, optimal_commission_types, temporal_patterns, peak_transaction_times, customer_segments, merchant_comparison, time_of_day_analysis, spending_trends`
+
+
+
+#### 2. Run Commission Analysis:
 ```bash
 spark-submit \
-  --conf "spark.driver.extraJavaOptions=-Djava.security.manager=allow" \
-  --conf "spark.executor.extraJavaOptions=-Djava.security.manager=allow" \
-  --packages org.mongodb.spark:mongo-spark-connector_2.12:3.0.1 \
+  --conf spark.driver.extraJavaOptions="-Djava.security.manager=allow" \
+  --conf spark.executor.extraJavaOptions="-Djava.security.manager=allow" \
+  --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,org.mongodb.spark:mongo-spark-connector_2.12:3.0.1 \
   --conf "spark.mongodb.input.uri=mongodb://localhost:27017/darooghe.transactions" \
   --conf "spark.mongodb.output.uri=mongodb://localhost:27017/darooghe" \
   src/batch_processing/commission_analysis.py
 ```
 
-#### 4. Run Transaction Patterns:
+
+#### 3. Run Transaction Patterns:
 ```bash
 spark-submit \
-  --conf "spark.driver.extraJavaOptions=-Djava.security.manager=allow" \
-  --conf "spark.executor.extraJavaOptions=-Djava.security.manager=allow" \
-  --packages org.mongodb.spark:mongo-spark-connector_2.12:3.0.1 \
+  --conf spark.driver.extraJavaOptions="-Djava.security.manager=allow" \
+  --conf spark.executor.extraJavaOptions="-Djava.security.manager=allow" \
+  --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,org.mongodb.spark:mongo-spark-connector_2.12:3.0.1 \
   --conf "spark.mongodb.input.uri=mongodb://localhost:27017/darooghe.transactions" \
   --conf "spark.mongodb.output.uri=mongodb://localhost:27017/darooghe" \
     src/batch_processing/transaction_patterns.py
 ```
 
-#### 5. View Results:
+#### 2. See the insights topic in kafka:
+Run this in terminal
+```bash
+kafka-console-consumer --bootstrap-server localhost:9092 --topic darooghe.valid_transactions --from-beginning
+```
+
+#### 4. View Results:
 
 - MongoBD Collections
 ```bash
 mongosh darooghe
 show collections
-db.commssion_reports.count()
+db.peak_transaction_times.count()
 db.commission_reports.findOne()
-db.commission_reports.find().limit(5).pretty()
+db.peak_transaction_times.find().limit(5).pretty()
 db.time_patterns.find().sort({day_of_week:1, hour:1}).limit(5)
 ```
 - Local JSON Files
@@ -163,8 +199,26 @@ ls -l src/batch_processing/results/
 cat src/batch_processing/results/optimal_commissions.json/part-*
 ```  
 
+#### 5. Load the data from `valid_transactions` to mongoDB:
+```bash
+spark-submit \
+  --conf spark.driver.extraJavaOptions="-Djava.security.manager=allow" \
+  --conf spark.executor.extraJavaOptions="-Djava.security.manager=allow" \
+  --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,org.mongodb.spark:mongo-spark-connector_2.12:3.0.1 \
+  --conf "spark.mongodb.input.uri=mongodb://localhost:27017/darooghe.transactions" \
+  --conf "spark.mongodb.output.uri=mongodb://localhost:27017/darooghe" \
+    src/batch_processing/transaction_patterns.py
+spark-submit \
+  --conf spark.driver.extraJavaOptions="-Djava.security.manager=allow" \
+  --conf spark.executor.extraJavaOptions="-Djava.security.manager=allow" \
+  --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,org.mongodb.spark:mongo-spark-connector_2.12:3.0.1 \
+  --conf "spark.mongodb.input.uri=mongodb://localhost:27017/darooghe.transactions" \
+  --conf "spark.mongodb.output.uri=mongodb://localhost:27017/darooghe" \
+  src/batch_processing/data_loader.py
+```
 
-#### 6. Stop MongoBD:
+
+#### 5. Stop MongoBD:
 ```bash
 # In the terminal running mongod
 Ctrl+C
@@ -172,4 +226,24 @@ Ctrl+C
 pkill -f mongod
 ```
 
+---
+
+### **Part 4 (Real Time Processing):**
+
+#### 1. Spark streaming app:
+
+```bash
+spark-submit \
+  --conf spark.driver.extraJavaOptions="-Djava.security.manager=allow" \
+  --conf spark.executor.extraJavaOptions="-Djava.security.manager=allow" \
+  --conf spark.hadoop.fs.defaultFS=file:/// \
+  --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0 \
+  src/realtime_processing/streaming_app.py
+```
+
+#### 2. See the insights topic in kafka:
+Run this in terminal
+```bash
+kafka-console-consumer --bootstrap-server localhost:9092 --topic darooghe.insights --from-beginning
+```
 
