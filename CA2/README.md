@@ -77,6 +77,10 @@ Should return "succeeded" message.
 ```bash
 /opt/homebrew/bin/kafka-topics --bootstrap-server localhost:9092 --list
 ```
+```bash
+kafka-console-consumer --bootstrap-server localhost:9092 --topic darooghe.valid_transactions --from-beginning
+```
+
 
 Here's how to **completely stop Kafka and reset all data** to start fresh:
 
@@ -176,11 +180,6 @@ spark-submit \
     src/batch_processing/transaction_patterns.py
 ```
 
-#### 2. See the insights topic in kafka:
-Run this in terminal
-```bash
-kafka-console-consumer --bootstrap-server localhost:9092 --topic darooghe.valid_transactions --from-beginning
-```
 
 #### 4. View Results:
 
@@ -205,18 +204,19 @@ spark-submit \
   --conf spark.driver.extraJavaOptions="-Djava.security.manager=allow" \
   --conf spark.executor.extraJavaOptions="-Djava.security.manager=allow" \
   --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,org.mongodb.spark:mongo-spark-connector_2.12:3.0.1 \
-  --conf "spark.mongodb.input.uri=mongodb://localhost:27017/darooghe.transactions" \
-  --conf "spark.mongodb.output.uri=mongodb://localhost:27017/darooghe" \
-    src/batch_processing/transaction_patterns.py
-spark-submit \
-  --conf spark.driver.extraJavaOptions="-Djava.security.manager=allow" \
-  --conf spark.executor.extraJavaOptions="-Djava.security.manager=allow" \
-  --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,org.mongodb.spark:mongo-spark-connector_2.12:3.0.1 \
-  --conf "spark.mongodb.input.uri=mongodb://localhost:27017/darooghe.transactions" \
-  --conf "spark.mongodb.output.uri=mongodb://localhost:27017/darooghe" \
   src/batch_processing/data_loader.py
 ```
 
+#### 6. Run Historical Aggregation:
+```bash
+spark-submit \
+  --conf spark.driver.extraJavaOptions="-Djava.security.manager=allow" \
+  --conf spark.executor.extraJavaOptions="-Djava.security.manager=allow" \
+  --packages org.mongodb.spark:mongo-spark-connector_2.12:3.0.1 \
+  --conf "spark.mongodb.input.uri=mongodb://localhost:27017/darooghe.transactions" \
+  --conf "spark.mongodb.output.uri=mongodb://localhost:27017/darooghe" \
+    src/batch_processing/historical_aggregation.py
+```
 
 #### 5. Stop MongoBD:
 ```bash
