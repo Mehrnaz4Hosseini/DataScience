@@ -11,7 +11,6 @@ def load_transactions_to_mongo():
         .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0") \
         .getOrCreate()
 
-    # Read from Kafka topic
     df = spark.read \
         .format("kafka") \
         .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
@@ -41,7 +40,6 @@ def load_transactions_to_mongo():
         .select("data.*") \
         .withColumn("timestamp", F.to_timestamp("timestamp"))
 
-    # Save raw transactions to MongoDB
     save_raw_transactions(df)
     
     spark.stop()

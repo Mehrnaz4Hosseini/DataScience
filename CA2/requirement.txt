@@ -7,6 +7,6 @@ pyarrow>=13.0.0
 plotly>=5.18.0
 pandas>=2.0.0
 ipython>=8.0.0
-
-
-// pyspark confluent-kafka pymongo matplotlib plotly jupyter
+matplotlib==3.10.1
+pytz 
+timezonefinder

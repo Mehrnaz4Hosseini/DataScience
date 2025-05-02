@@ -10,8 +10,7 @@ def create_historical_aggregations():
         .master(SPARK_MASTER) \
         .config("spark.jars.packages", "org.mongodb.spark:mongo-spark-connector_2.12:3.0.1") \
         .getOrCreate()
-
-    # Read from MongoDB raw transactions
+    
     df = spark.read \
         .format("mongo") \
         .option("uri", "mongodb://localhost:27017/darooghe.valid_transactions") \
@@ -40,6 +39,7 @@ def create_historical_aggregations():
         F.sum("amount").alias("weekly_volume")
     ).withColumn("week", F.concat(F.col("year"), F.lit("-"), F.col("week_num")))
 
+
     # 2. Commission Reports
     # Monthly commission by category
     monthly_commissions = df.groupBy(
@@ -51,10 +51,21 @@ def create_historical_aggregations():
         (F.sum("commission_amount")/F.sum("amount")).alias("commission_ratio")
     )
 
+    # 3. Customer profile aggregations for fraud detection
+    customer_profiles = df.groupBy("customer_id").agg(
+        F.avg("amount").alias("avg_transaction_amount"),
+        F.stddev("amount").alias("stddev_transaction_amount"),
+        F.count("*").alias("total_transactions"),
+        F.max("amount").alias("max_transaction_amount"),
+        F.min("amount").alias("min_transaction_amount"),
+        F.first("customer_type").alias("customer_type")
+    )
+
     # Save all historical aggregations
     save_aggregated_results(daily_merchant, "daily_merchant_summary")
     save_aggregated_results(weekly_segments, "weekly_customer_segments")
     save_aggregated_results(monthly_commissions, "monthly_commission_reports")
+    save_aggregated_results(customer_profiles, "customer_profiles")
 
     spark.stop()
 

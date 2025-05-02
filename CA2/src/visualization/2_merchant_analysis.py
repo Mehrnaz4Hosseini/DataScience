@@ -25,8 +25,7 @@ class MerchantAnalyzer:
     
     def visualize_top_merchants(self):
         top_merchants = self.get_top_merchants()
-        
-        # Create DataFrame for visualization
+
         merchants = [m['_id'] for m in top_merchants]
         counts = [m['transaction_count'] for m in top_merchants]
         categories = [m['merchant_category'] for m in top_merchants]

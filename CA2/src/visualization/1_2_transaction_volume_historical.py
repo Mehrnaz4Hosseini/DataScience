@@ -1,4 +1,3 @@
-# src/batch_processing/historical_volume_analysis.py
 import pymongo
 from pymongo import MongoClient
 import plotly.graph_objects as go
@@ -26,11 +25,10 @@ class HistoricalVolumeAnalyzer:
         elif time_range == '30d':
             start_time = now - timedelta(days=30)
             resample_freq = '1D'
-        else:  # default to 7 days
+        else: 
             start_time = now - timedelta(days=7)
             resample_freq = '1D'
-        
-        # Query MongoDB
+
         query = {'timestamp': {'$gte': start_time, '$lte': now}}
         projection = {'timestamp': 1, 'amount': 1, '_id': 0}
         cursor = self.collection.find(query, projection)
@@ -38,12 +36,10 @@ class HistoricalVolumeAnalyzer:
         
         if df.empty:
             return pd.DataFrame(), pd.DataFrame()
-        
-        # Process data
+
         df['timestamp'] = pd.to_datetime(df['timestamp'])
         df.set_index('timestamp', inplace=True)
-        
-        # Resample data - ALWAYS use hourly for amounts regardless of time range
+
         df_amount = df['amount'].resample('1H').sum().to_frame('total_amount')
         df_count = df['amount'].resample(resample_freq).count().to_frame('transaction_count')
         
@@ -56,7 +52,6 @@ class HistoricalVolumeAnalyzer:
             print("No historical data found for the selected time range")
             return
         
-        # Create subplots
         fig = make_subplots(
             rows=2, cols=1,
             subplot_titles=(
@@ -66,7 +61,6 @@ class HistoricalVolumeAnalyzer:
             vertical_spacing=0.15
         )
         
-        # Top graph - Hourly Amounts (Line)
         fig.add_trace(
             go.Scatter(
                 x=df_amount.index,
@@ -78,8 +72,7 @@ class HistoricalVolumeAnalyzer:
             ),
             row=1, col=1
         )
-        
-        # Bottom graph - Daily Counts (Bar)
+
         fig.add_trace(
             go.Bar(
                 x=df_count.index,
@@ -91,7 +84,6 @@ class HistoricalVolumeAnalyzer:
             row=2, col=1
         )
         
-        # Update layout
         fig.update_layout(
             height=800,
             title_text=f'Historical Transaction Analysis (Last {time_range})',
@@ -99,12 +91,10 @@ class HistoricalVolumeAnalyzer:
             showlegend=False
         )
         
-        # Update axes
         fig.update_yaxes(title_text="Total Amount", row=1, col=1)
         fig.update_yaxes(title_text="Transaction Count", row=2, col=1)
         fig.update_xaxes(title_text="Time", row=2, col=1)
         
-        # Format x-axis
         fig.update_xaxes(
             tickformat="%Y-%m-%d %H:%M",
             row=1, col=1
@@ -118,6 +108,5 @@ class HistoricalVolumeAnalyzer:
 
 if __name__ == "__main__":
     analyzer = HistoricalVolumeAnalyzer()
-    
-    # Available time ranges: '24h', '7d', '30d'
+
     analyzer.visualize_historical_volume(time_range='7d')

@@ -31,7 +31,6 @@ def save_raw_transactions(df: DataFrame):
     try:
         logger.info(f"Saving {df.count()} raw transactions to MongoDB")
         
-        # Add partitioning by date
         df_with_partition = df.withColumn("partition_date", F.date_format("timestamp", "yyyyMMdd"))
         
         df_with_partition.write \

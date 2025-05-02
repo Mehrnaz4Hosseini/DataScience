@@ -1,7 +1,5 @@
-# Core transaction schema
 from pyspark.sql.types import *
 
-# Complete transaction schema matching your data_ingestion model
 transaction_schema = StructType([
     StructField("transaction_id", StringType(), False),
     StructField("timestamp", TimestampType(), True),

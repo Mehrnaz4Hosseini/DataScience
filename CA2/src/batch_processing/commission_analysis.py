@@ -10,7 +10,6 @@ def run_commission_analysis():
         .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0") \
         .getOrCreate()
 
-    # Read from Kafka topic with valid transactions
     df = spark.read \
         .format("kafka") \
         .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \

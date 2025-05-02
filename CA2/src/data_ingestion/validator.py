@@ -8,7 +8,7 @@ from src.data_ingestion.schemas import Transaction
 class TransactionModel(BaseModel):
     """Pydantic model for validation."""
     transaction_id: str
-    timestamp: str  # Keep as string for initial validation
+    timestamp: str 
     customer_id: str
     merchant_id: str
     merchant_category: str
@@ -26,7 +26,7 @@ class TransactionModel(BaseModel):
     failure_reason: Optional[str]
 
     class Config:
-        extra = "forbid"  # Rejects unexpected fields
+        extra = "forbid" 
 
 def parse_transaction(message_value: str) -> Optional[Transaction]:
     """Convert raw Kafka message to Transaction object with proper timestamp parsing + validation"""
@@ -34,12 +34,10 @@ def parse_transaction(message_value: str) -> Optional[Transaction]:
         data = json.loads(message_value)
         validated = TransactionModel(**data).dict()
         
-        # Convert timestamp string to datetime
         timestamp_str = validated["timestamp"].replace("Z", "")
         try:
             timestamp = datetime.fromisoformat(timestamp_str)
         except ValueError:
-            # Handle different timestamp formats if needed
             timestamp = datetime.strptime(timestamp_str, "%Y-%m-%dT%H:%M:%S.%f")
         
         return Transaction(

@@ -38,7 +38,7 @@ def analyze_patterns():
         .select("data.*") \
         .withColumn("timestamp", F.to_timestamp("timestamp"))
 
-    # I. Temporal Patterns (Requirements I & II & V combined)
+    # I. Temporal Patterns
     temporal_analysis = df.withColumn("hour", F.hour("timestamp")) \
         .withColumn("day_of_week", F.dayofweek("timestamp")) \
         .withColumn("time_of_day", 
@@ -52,10 +52,10 @@ def analyze_patterns():
             F.avg("amount").alias("avg_amount")
         ).orderBy("day_of_week", "hour")
     
-    # II. Peak Transaction Times (Requirement II)
+    # II. Peak Transaction Times
     peak_times = temporal_analysis.orderBy(F.desc("transaction_count")).limit(10)
 
-    # III. Customer Segmentation (Requirement III)
+    # III. Customer Segmentation
     customer_segments = df.groupBy("customer_id").agg(
         F.count("*").alias("transaction_frequency"),
         F.sum("amount").alias("total_spent"),
@@ -68,7 +68,7 @@ def analyze_patterns():
          .otherwise("Standard")
     )
 
-    # IV. Merchant Category Comparison (Requirement IV)
+    # IV. Merchant Category Comparison
     merchant_comparison = df.groupBy("merchant_category").agg(
         F.count("*").alias("total_transactions"),
         F.sum("amount").alias("total_volume"),
@@ -76,7 +76,7 @@ def analyze_patterns():
         F.avg(F.when(F.col("status") == "approved", 1).otherwise(0)).alias("approval_rate")
     ).orderBy("total_transactions", ascending=False)
 
-    # V. Time-of-Day Analysis (Requirement V)
+    # V. Time-of-Day Analysis
     time_of_day_analysis = df.withColumn("time_of_day", 
         F.when((F.hour("timestamp") >= 6) & (F.hour("timestamp") < 12), "morning")
          .when((F.hour("timestamp") >= 12) & (F.hour("timestamp") < 18), "afternoon")
@@ -86,7 +86,7 @@ def analyze_patterns():
         F.avg("amount").alias("avg_amount")
     )
 
-    # VI. Spending Trends Over Time (Requirement VI)
+    # VI. Spending Trends Over Time
     weekly_trends = df.groupBy(
         F.window("timestamp", "1 week").alias("week"),
         "merchant_category"

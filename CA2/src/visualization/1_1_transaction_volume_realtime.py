@@ -10,11 +10,10 @@ from collections import deque
 from plotly.subplots import make_subplots
 from configs.kafka_config import KAFKA_BOOTSTRAP_SERVERS
 
-# Shared data storage with thread lock
+
 transaction_data = deque(maxlen=1000)
 data_lock = Lock()
 
-# Kafka consumer thread
 def kafka_consumer():
     consumer = Consumer({
         'bootstrap.servers': KAFKA_BOOTSTRAP_SERVERS,
@@ -46,10 +45,8 @@ def kafka_consumer():
     finally:
         consumer.close()
 
-# Start Kafka consumer in background
 Thread(target=kafka_consumer, daemon=True).start()
 
-# Dash app
 app = Dash(__name__)
 
 app.layout = html.Div([
@@ -65,7 +62,7 @@ app.layout = html.Div([
 )
 def update_graph(n):
     with data_lock:
-        current_data = list(transaction_data)  # Create a thread-safe copy
+        current_data = list(transaction_data)
     
     if not current_data:
         debug_msg = "No data received yet. Waiting for Kafka messages..."
@@ -111,17 +108,14 @@ def update_graph(n):
             row=2, col=1
         )
         
-        # Update layout for both subplots
         fig.update_layout(
             height=800,
             showlegend=False
         )
         
-        # Update y-axis titles for each subplot
         fig.update_yaxes(title_text="Transaction Amount", row=1, col=1)
         fig.update_yaxes(title_text="Transaction Count", row=2, col=1)
         
-        # Update x-axis title for bottom subplot only
         fig.update_xaxes(title_text="Time", row=2, col=1)
         
         debug_msg = f"Data points: {len(current_data)}\n"
@@ -137,4 +131,4 @@ def update_graph(n):
         return go.Figure(), error_msg
 
 if __name__ == "__main__":
-    app.run(debug=True, use_reloader=False)  # Disable reloader to avoid duplicate threads
+    app.run(debug=True, use_reloader=False)

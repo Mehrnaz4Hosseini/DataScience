@@ -1,4 +1,3 @@
-# src/batch_processing/user_activity_analysis.py
 import pymongo
 from pymongo import MongoClient
 import plotly.graph_objects as go
@@ -13,7 +12,6 @@ class UserActivityAnalyzer:
         self.collection = self.db['valid_transactions']
     
     def get_user_activity_metrics(self):
-        # Transactions per user
         pipeline1 = [
             {"$group": {
                 "_id": "$customer_id",
@@ -23,8 +21,7 @@ class UserActivityAnalyzer:
             {"$sort": {"transaction_count": -1}},
             {"$limit": 20}
         ]
-        
-        # Frequency of activity (transactions per day)
+
         pipeline2 = [
             {"$group": {
                 "_id": {
@@ -41,7 +38,6 @@ class UserActivityAnalyzer:
             {"$limit": 20}
         ]
         
-        # Hourly growth trends (modified from daily)
         pipeline3 = [
             {"$group": {
                 "_id": {
@@ -61,15 +57,13 @@ class UserActivityAnalyzer:
     
     def visualize_user_activity(self):
         metrics = self.get_user_activity_metrics()
-        
-        # Define colors for all customer types
+
         customer_colors = {
             'individual': 'rgb(26, 118, 255)',
             'business': 'rgb(55, 83, 109)',
             'CIP': 'rgb(255, 127, 14)'
         }
-        
-        # Create subplots
+
         fig = make_subplots(
             rows=3, cols=1,
             subplot_titles=(
@@ -135,21 +129,18 @@ class UserActivityAnalyzer:
                 ),
                 row=3, col=1
             )
-        
-        # Update layout with Y-axis labels
+
         fig.update_layout(
             height=1200,
             showlegend=True,
             title_text="User Activity Analysis",
             hovermode='x unified'
         )
-        
-        # Add Y-axis titles for each subplot
+
         fig.update_yaxes(title_text="Number of Transactions", row=1, col=1)
         fig.update_yaxes(title_text="Number of Transactions /Day", row=2, col=1)
         fig.update_yaxes(title_text="Number of Transactions", row=3, col=1)
-        
-        # Update x-axis for hourly chart
+
         fig.update_xaxes(
             tickangle=45,
             tickformat="%Y-%m-%d %H:%M",
