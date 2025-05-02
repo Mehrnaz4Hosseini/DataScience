@@ -1,5 +1,5 @@
 
-### **Part1 (Set up):**
+### **Part 1 (Set up):**
 
 #### 1. First, completely stop any Kafka remnants:
 ```bash
@@ -66,6 +66,39 @@ kafka-topics --create \
   --replication-factor 1
   ```
 
+```bash
+kafka-topics --create \
+  --topic darooghe.fraud_alerts \
+  --bootstrap-server localhost:9092 \
+  --partitions 3 \
+  --replication-factor 1
+  ```
+
+  ```bash
+kafka-topics --create \
+  --topic darooghe.commission_by_type \
+  --bootstrap-server localhost:9092 \
+  --partitions 3 \
+  --replication-factor 1
+  ```
+
+  ```bash
+kafka-topics --create \
+  --topic darooghe.commission_ratio \
+  --bootstrap-server localhost:9092 \
+  --partitions 3 \
+  --replication-factor 1
+  ```
+
+  ```bash
+kafka-topics --create \
+  --topic darooghe.top_commission_merchants\
+  --bootstrap-server localhost:9092 \
+  --partitions 3 \
+  --replication-factor 1
+  ```
+  
+
 #### 6. Test the connection:
 ```bash
 nc -zv localhost 9092
@@ -73,7 +106,7 @@ nc -zv localhost 9092
 Should return "succeeded" message.
 
 
-#### 6. See topics:
+#### 7. See topics:
 ```bash
 /opt/homebrew/bin/kafka-topics --bootstrap-server localhost:9092 --list
 ```
@@ -110,7 +143,7 @@ ls /tmp/kraft-combined-logs  # Should show "No such file or directory"
 
 ---
 
-### **Part2 (Data Ingestion):**
+### **Part 2 (Data Ingestion):**
 
 
 #### 1. Run your producer:
@@ -237,13 +270,57 @@ spark-submit \
   --conf spark.driver.extraJavaOptions="-Djava.security.manager=allow" \
   --conf spark.executor.extraJavaOptions="-Djava.security.manager=allow" \
   --conf spark.hadoop.fs.defaultFS=file:/// \
-  --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0 \
+  --packages "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,org.mongodb.spark:mongo-spark-connector_2.12:3.0.1" \
+  --conf "spark.mongodb.input.uri=mongodb://localhost:27017/darooghe.aggregated_transactions_customer_profiles" \
+  --conf "spark.mongodb.output.uri=mongodb://localhost:27017/darooghe" \
   src/realtime_processing/streaming_app.py
 ```
+
 
 #### 2. See the insights topic in kafka:
 Run this in terminal
 ```bash
 kafka-console-consumer --bootstrap-server localhost:9092 --topic darooghe.insights --from-beginning
+kafka-console-consumer --bootstrap-server localhost:9092 --topic darooghe.fraud_alerts --from-beginning
 ```
 
+---
+
+### **Part 5 (Visualization):**
+
+#### 1. Spark streaming app:
+
+```bash
+python src/realtime_processing/1_1_transaction_volume_realtime.py
+python src/visualization/1_2_transaction_volume_historical.py
+python src/visualization/2_merchant_analysis.py
+python src/visualization/3_user_activity.py
+```
+
+
+---
+
+### **Part 6 (bonus):**
+
+#### 1. Temporal Analysis:
+
+```bash
+spark-submit \
+  --conf spark.driver.extraJavaOptions="-Djava.security.manager=allow" \
+  --conf spark.executor.extraJavaOptions="-Djava.security.manager=allow" \
+  --conf spark.hadoop.fs.defaultFS=file:/// \
+  --packages "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,org.mongodb.spark:mongo-spark-connector_2.12:3.0.1" \
+  --conf "spark.mongodb.input.uri=mongodb://localhost:27017/darooghe" \
+  --conf "spark.mongodb.output.uri=mongodb://localhost:27017/darooghe" \
+src/temporal_analysis/merchant_activity_analysis.py
+```
+```bash
+spark-submit \
+  --conf spark.driver.extraJavaOptions="-Djava.security.manager=allow" \
+  --conf spark.executor.extraJavaOptions="-Djava.security.manager=allow" \
+  --conf spark.hadoop.fs.defaultFS=file:/// \
+  --packages "org.mongodb.spark:mongo-spark-connector_2.12:3.0.1" \
+  --conf "spark.mongodb.input.uri=mongodb://localhost:27017/darooghe" \
+  --conf "spark.mongodb.output.uri=mongodb://localhost:27017/darooghe" \
+  src/temporal_analysis/1_merchant_business_hours_analysis.py
+```
