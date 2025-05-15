@@ -71,7 +71,7 @@ class DaroogheStreamProcessor:
         velocity_check = parsed_stream \
             .withWatermark("timestamp", "2 minutes") \
             .groupBy(
-                window(col("timestamp"), "2 minutes"),
+                window(col("timestamp"), "2 minutes", "30 seconds"),
                 col("customer_id")
             ).agg(
                 count("*").alias("transaction_count"),
@@ -164,7 +164,7 @@ class DaroogheStreamProcessor:
         amount_anomaly = parsed_stream \
             .join(customer_profiles, "customer_id", "left") \
             .withColumn("is_anomaly", 
-                    (col("amount") > (col("avg_transaction_amount") * 10)) & 
+                    (col("amount") > (col("avg_transaction_amount") * 1)) & 
                     (col("avg_transaction_amount").isNotNull())) \
             .filter(col("is_anomaly") == True) \
             .withColumn("fraud_type", lit("AMOUNT_ANOMALY")) \
@@ -182,14 +182,11 @@ class DaroogheStreamProcessor:
             )
         
         combined_fraud_alerts = velocity_check.unionByName(
-            geo_impossibility.unionByName(
-                amount_anomaly.select(
-                    col("fraud_type"),
-                    col("fraud_description"),
-                    col("fraud_timestamp"),
-                    array(col("transaction")).alias("transactions")
-                ),
-                allowMissingColumns=True
+            amount_anomaly.select(
+                col("fraud_type"),
+                col("fraud_description"),
+                col("fraud_timestamp"),
+                array(col("transaction")).alias("transactions")
             ),
             allowMissingColumns=True
         )
@@ -200,7 +197,7 @@ class DaroogheStreamProcessor:
             .format("kafka") \
             .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
             .option("topic", "darooghe.fraud_alerts") \
-            .option("checkpointLocation", f"{CHECKPOINT_LOCATION}/fraud_detection") \
+            .option("checkpointLocation", f"{CHECKPOINT_LOCATION}/fraud_detection_3") \
             .outputMode("append") \
             .start()
     
@@ -236,7 +233,7 @@ class DaroogheStreamProcessor:
             .format("kafka") \
             .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
             .option("topic", OUTPUT_TOPIC) \
-            .option("checkpointLocation", f"{CHECKPOINT_LOCATION}/windowed_agg") \
+            .option("checkpointLocation", f"{CHECKPOINT_LOCATION}/windowed_agg_3") \
             .outputMode("complete") \
             .start()
 
@@ -245,7 +242,7 @@ class DaroogheStreamProcessor:
         commission_by_type = parsed_stream \
             .withWatermark("timestamp", "2 minutes") \
             .groupBy(
-                window(col("timestamp"), "1 minute"),
+                window(col("timestamp"), "1 minute", "20 seconds"),
                 col("commission_type")
             ).agg(
                 sum("commission_amount").alias("total_commission_by_type"),
@@ -264,7 +261,7 @@ class DaroogheStreamProcessor:
             .format("kafka") \
             .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
             .option("topic", "darooghe.commission_by_type") \
-            .option("checkpointLocation", f"{CHECKPOINT_LOCATION}/commission_analytics/commission_by_type") \
+            .option("checkpointLocation", f"{CHECKPOINT_LOCATION}/commission_analytics_3/commission_by_type") \
             .outputMode("complete") \
             .start()
 
@@ -272,7 +269,7 @@ class DaroogheStreamProcessor:
         commission_ratio = parsed_stream \
             .withWatermark("timestamp", "2 minutes") \
             .groupBy(
-                window(col("timestamp"), "1 minute"),
+                window(col("timestamp"), "1 minute", "20 seconds"),
                 col("merchant_category")
             ).agg(
                 (sum("commission_amount") / sum("amount")).alias("commission_ratio"),
@@ -293,7 +290,7 @@ class DaroogheStreamProcessor:
             .format("kafka") \
             .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
             .option("topic", "darooghe.commission_ratio") \
-            .option("checkpointLocation", f"{CHECKPOINT_LOCATION}/commission_analytics/commission_ratio") \
+            .option("checkpointLocation", f"{CHECKPOINT_LOCATION}/commission_analytics_3/commission_ratio") \
             .outputMode("complete") \
             .start()
 
@@ -340,7 +337,7 @@ class DaroogheStreamProcessor:
         self.queries["top_merchants_query"] = top_merchants \
             .writeStream \
             .foreachBatch(process_top_merchants) \
-            .option("checkpointLocation", f"{CHECKPOINT_LOCATION}/commission_analytics/top_merchants") \
+            .option("checkpointLocation", f"{CHECKPOINT_LOCATION}/commission_analytics_3/top_merchants") \
             .outputMode("complete") \
             .start()
 
