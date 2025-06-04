@@ -1,0 +1,2 @@
+scraping data: https://drive.google.com/file/d/15O5YE3JzKI1NBhW2o7MfiTfHKC0B_7Zs/view?usp=drive_link
+data after preprocessin and feature engineering: https://drive.google.com/file/d/1w50sNxZOSE9hShBGtXVTbQwDg5faKJbY/view?usp=drive_link
