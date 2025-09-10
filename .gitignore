@@ -7,5 +7,6 @@ Project/Phase3/best_model
 Project/Phase3/mlruns
 Project/mlruns
 CA5&6/3_LLM_for_MCQs/swag_dataset
+CA5&6/4_Image_Segmentation_Using_Clustering_Methods/data
 Project/Phase3/mlflow.db
 mlruns/0/meta.yaml
